@@ -5,13 +5,148 @@
 
 using namespace std;
 
+class element{
+    private:
+        int numerator, denominator;
+    public:
+
+    element(int numerator, int denominator):numerator(numerator), denominator(denominator){
+        normalize();
+    }
+    element(char c[]){
+        if(check_fraction(c)){
+            analyze_fraction(numerator, denominator, c);
+            normalize();
+        }else{
+            numerator=atoi(c);
+            denominator=1;
+        }
+    }
+    element(){}
+
+    ~element(){}
+
+    bool check_fraction(char c[]){
+        int n=strlen(c);
+        for(int i=0;i<n;++i){
+            if(c[i]=='/'){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void analyze_fraction(int& n, int& d, char c[]){
+        n=0;
+        d=0;
+        int k=1, i=strlen(c)-1;
+        while(c[i]!='/'){
+            if(c[i]=='-'){
+                d*=-1;
+            }else if(c[i]>='0'&&c[i]<='9'){
+                d+=(c[i]-48)*k; 
+                k*=10;
+            }
+            --i;
+        }
+        --i;
+        k=1;
+        while(i>=0){
+            if(c[i]=='-'){
+                n*=-1;
+            }else if(c[i]>='0'&&c[i]<='9'){
+                n+=(c[i]-48)*k;
+                k*=10;
+            }
+            --i;
+        }
+    }
+
+    void normalize(){
+        int k=gcd(numerator, denominator);
+        numerator/=k;
+        denominator/=k;
+
+        if(denominator<0){
+            numerator*=-1;
+            denominator*=-1;
+        }
+    }
+
+    void set(int n, int d){
+        numerator=n;
+        denominator=d;
+        normalize();
+    }
+
+    int& get_n(){
+        return numerator;
+    }
+
+    int& get_d(){
+        return denominator;
+    }
+    
+    void set(char c[]){
+        if(check_fraction(c)){
+            analyze_fraction(numerator, denominator, c);
+            normalize();
+        }else{
+            numerator=atoi(c);
+            denominator=1;
+        }
+    }
+
+    int gcd(int a, int b){
+        if (b == 0) return a;
+        else return gcd(b, a % b);
+    }
+
+    void out_element(){
+        if(denominator!=1){
+            string s=to_string(numerator)+"/"+to_string(denominator);
+            string t;
+            for(int i=0;i<6-s.length();++i){
+                t+=" ";
+            }
+            s=t+s;
+            cout<<s;
+        }else printf("%6d",numerator);
+    }
+};
+
+class matrix_node{
+    private:
+        int n,m;
+    public:
+
+    element **a;
+    matrix_node* next;
+    matrix_node* prev;
+
+    matrix_node(element** a, int n, int m):a(a),n(n),m(m){
+        next=NULL;
+        prev=NULL;
+    }
+
+    matrix_node(element**a, int n, int m, matrix_node* prev):a(a),n(n),m(m),prev(prev){
+        next=NULL;
+    }
+
+    ~matrix_node(){
+        for(int i=0;i<n;++i){
+            delete[] a[i];
+        }
+        delete[] a;
+    }
+};
+
 class matrix{
     private:
         int n,m;
         int multiplicator;
         int kr;
-        int **a;
-        int **c;
+        matrix_node* cur;
     public:
     
     matrix(){}
@@ -19,19 +154,26 @@ class matrix{
         init();
     }
     ~matrix() {
-        for(int i=0;i<n;++i){
-            delete[] a[i];
-            delete[] c[i];
+        delete_nodes(cur->next);
+        while(cur!=NULL){
+            matrix_node* del=cur;
+            cur=cur->prev;
+            delete del;
         }
-        delete[] a;
-        delete[] c;
     }
     void init(){
-        a=new int *[n];
-        c=new int *[n];
+        element**a;
+        a=new element *[n];
         for(int i=0;i<n;++i){
-            a[i] = new int[m];
-            c[i] = new int[m];
+            a[i] = new element[m];
+        }
+        cur = new matrix_node(a,n,m);
+    }
+    void delete_nodes(matrix_node* node){
+        while(node!=NULL){
+            matrix_node* del = node;
+            node=node->next;
+            delete del;
         }
     }
     void read(){
@@ -39,18 +181,21 @@ class matrix{
             printf("    Enter line %d:\n", i+1);
             printf("    ");
             for(int j=0;j<m;++j){
-                scanf("%d",&a[i][j]);
-                c[i][j] = a[i][j];
+                char t[8];
+                scanf("%s",t);
+                cur->a[i][j].set(t);
             }
         }
     }
     bool fread(FILE *fr){
         for(int i=0;i<n;++i){
             for(int j=0;j<m;++j){
-                int ret = fscanf(fr,"%d",&a[i][j]);
+                char t[8];
+                int ret = fscanf(fr,"%s",t);
                 if(ret!=1){
                     return false;
                 }
+                cur->a[i][j].set(t);
             }
         }
         return true;
@@ -59,7 +204,9 @@ class matrix{
         printf("\nCurrent matrix\n");
         for(int i=0;i<n;++i){
             for(int j=0;j<m;++j){
-                printf("%4d ",a[i][j]);
+                //printf("%4d ",a[i][j]);
+                cur->a[i][j].out_element();
+                printf(" ");
             }
             printf("\n");
         }
@@ -70,7 +217,7 @@ class matrix{
         }
         for(int i=0;i<n;++i){
             for(int j=0;j<m;++j){
-                if(a[i][j]>=kr){
+                if(cur->a[i][j].get_n()>=kr){
                     return false;
                 }
             }
@@ -91,20 +238,28 @@ class matrix{
     }
 
     void copy(){
+        element** c = new element*[n];
         for(int i=0;i<n;++i){
+            c[i]=new element[m];
             for(int j=0;j<m;++j){
-                c[i][j] = a[i][j];
+                c[i][j] = cur->a[i][j];
             }
+        }
+        delete_nodes(cur->next);
+        matrix_node* t = new matrix_node(c,n,m,cur);
+        cur->next=t;
+        cur=t;
+    }
+    void undo(){
+        if(cur->prev!=NULL){
+            cur=cur->prev;
         }
     }
     void revert(){
-        for(int i=0;i<n;++i){
-            for(int j=0;j<m;++j){
-                a[i][j] = c[i][j];
-            }
+        if(cur->next!=NULL){
+            cur=cur->next;
         }
     }
-
     int nm(int x){
         x=abs(x);
         for(int i=0;i<kr;++i){
@@ -126,20 +281,21 @@ class matrix{
     }
 
     void swap(int i1, int i2){
-        int *t = a[i1];
-        a[i1] = a[i2];
-        a[i2] = t;
+        element *t = cur->a[i1];
+        cur->a[i1] = cur->a[i2];
+        cur->a[i2] = t;
     }
     void mult(int t, int i){
         if(kr!=-1&&t<0){
             t=na(t);
         }
         for(int j=0;j<m;++j){
-            int s=a[i][j] * t;
+            int s=cur->a[i][j].get_n() * t;
             if(kr!=-1){
                 s%=kr;
             }
-            a[i][j]=s;
+            cur->a[i][j].get_n()=s;
+            cur->a[i][j].normalize();
         }
     }
     void dev(int t, int i){
@@ -148,39 +304,50 @@ class matrix{
                 t=na(t);
             }
             t=nm(t);
+            mult(t,i);
+        }else{
+            for(int j=0;j<m;++j){
+                cur->a[i][j].get_d()*=t;
+                cur->a[i][j].normalize();
+            }
         }
-        mult(t,i);
     }
     void add(int i1, int i2){
         for(int j=0;j<m;++j){
-            int s = a[i2][j] * multiplicator;
             if(kr!=-1){
+                int s = cur->a[i2][j].get_n() * multiplicator;
                 s%=kr;
-            }
-            s+=a[i1][j];
-            if(kr!=-1){
+                s+=cur->a[i1][j].get_n();
                 s%=kr;
+                cur->a[i1][j].get_n()=s;
+            }else{
+                int n=cur->a[i2][j].get_n() * multiplicator,d=cur->a[i2][j].get_d();
+                n=n*cur->a[i1][j].get_d()+cur->a[i1][j].get_n()*d;
+                d=d*cur->a[i1][j].get_d();
+                cur->a[i1][j].set(n,d);
             }
-            a[i1][j]=s;
         }
     }
     void min(int i1, int i2){
         for(int j=0;j<m;++j){
-            int s = a[i2][j] * multiplicator;
             if(kr!=-1){
+                int s = cur->a[i2][j].get_n() * multiplicator;
                 s%=kr;
                 s = na(s);
-            }
-            s+=a[i1][j];
-            if(kr!=-1){
+                s+=cur->a[i1][j].get_n();
                 s%=kr;
+                cur->a[i1][j].get_n()=s;
+            }else{
+                int n=cur->a[i2][j].get_n() * multiplicator,d=cur->a[i2][j].get_d();
+                n=cur->a[i1][j].get_n()*d-n*cur->a[i1][j].get_d();
+                d=d*cur->a[i1][j].get_d();
+                cur->a[i1][j].set(n,d);
             }
-            a[i1][j]=s;
         }
     }
-    void change_line(int i, int* t){
-        delete[] a[i];
-        a[i]=t;
+    void change_line(int i, element* t){
+        delete[] cur->a[i];
+        cur->a[i]=t;
     }
 };
 
@@ -263,6 +430,7 @@ void calculation(){
     bool f=true;
     while(f){
         char command[101];
+        printf("> ");
         scanf("%s", command);
         if (strcmp(command, "new") == 0) {
             delete ma;
@@ -347,6 +515,10 @@ void calculation(){
             ma->revert();
             ma->out();
             printf("\n");
+        } else if (strcmp(command, "undo") == 0) {
+            ma->undo();
+            ma->out();
+            printf("\n");
         }  else if (strcmp(command, "n*") == 0) {
             int x;
             scanf("%d",&x);
@@ -369,15 +541,28 @@ void calculation(){
             f=false;
         } else if (strcmp(command, "change") == 0) {
             ma->copy();
-            printf("Eneter line number: ");
+            printf("Enter line number: ");
             int x;
             scanf("%d",&x);
             printf("Enter line: ");
-            int *t = new int[ma->get_m()];
+            element *t = new element[ma->get_m()];
             for(int i=0;i<ma->get_m();++i){
-                scanf("%d",&t[i]);
+                char st[8];
+                scanf("%s",st);
+                t[i].set(st);
             }
             ma->change_line(x-1, t);
+            ma->out();
+            printf("\n");
+        } else if (strcmp(command, "help") == 0){
+            FILE* fr = fopen("guide.txt","r");
+            char buffer[256];
+            while (fgets(buffer, sizeof(buffer), fr)) {
+                cout << buffer;
+            }
+            cout<<endl<<endl<<endl;
+            fclose(fr);
+        } else if (strcmp(command, "matrix") == 0){
             ma->out();
             printf("\n");
         } else {

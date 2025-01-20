@@ -1,0 +1,52 @@
+>new
+    Create new matrix
+
+>help
+    Guide
+
+>matrix
+    Output matrix
+
+>* k i
+    Multiply line i by k
+    Ri <- k * Ri
+
+>/ k i
+    Devide line i by k
+    Ri <- Ri / k
+
+>+ i j 
+    To line i add line j with mult. k
+    Ri <- Ri + k * Rj
+
+>- i j 
+    From line i subtract line j with mult. k
+    Ri <- Ri - k * Rj
+
+>swap i j
+    Swap line i and j
+    Ri <-> Rj
+
+>krat 
+    Get current krat
+
+>undo
+    Undo change
+
+>revert
+    Opposite of undo
+
+>change
+    Change one line
+
+>n* k
+    Find inverted element(*) for k with current krat
+
+>n+ k
+    Find inverted element(+) for k with current krat
+
+>setk k
+    Set krat to k
+
+>end
+    Finish
