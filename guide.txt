@@ -7,6 +7,9 @@
 >matrix
     Output matrix
 
+>rtm
+    Shapes the matrix into a form of rtm
+
 >* k i
     Multiply line i by k
     Ri <- k * Ri
