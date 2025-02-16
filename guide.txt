@@ -4,11 +4,26 @@
 >help
     Guide
 
+>save
+    Saves matrix to a file
+
 >matrix
     Output matrix
 
 >rtm
     Shapes the matrix into a form of rtm
+
+>det
+    Calculates determinant of the matrix
+
+>T
+    Transports the matrix 
+
+>*matrix
+    Multiplies current amtrix with input matrix
+
+>+matrix
+    Adds input matrix to a current amtrix
 
 >* k i
     Multiply line i by k
@@ -41,6 +56,9 @@
 
 >change
     Change one line
+
+>chelem
+    Change one element
 
 >n* k
     Find inverted element(*) for k with current krat

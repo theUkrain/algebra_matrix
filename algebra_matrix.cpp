@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cmath>
 #include <cstdio>
 #include <cassert>
 #include <cstring>
@@ -113,6 +114,18 @@ class element{
             cout<<s;
         }else printf("%6d",numerator);
     }
+
+    void fout_element(FILE* fr){
+        if(denominator!=1){
+            string s=to_string(numerator)+"/"+to_string(denominator);
+            string t;
+            /*for(int i=0;i<6-s.length();++i){
+                t+=" ";
+            }*/
+            s=t+s;
+            fprintf(fr,"%s",s);
+        }else fprintf(fr,"%d",numerator);
+    }
 };
 
 class matrix_node{
@@ -139,6 +152,13 @@ class matrix_node{
         }
         delete[] a;
     }
+
+    int& get_n(){
+        return n;
+    }
+    int& get_m(){
+        return m;
+    }
 };
 
 class matrix{
@@ -160,6 +180,9 @@ class matrix{
             cur=cur->prev;
             delete del;
         }
+    }
+    matrix_node*& curent(){
+        return cur;
     }
     void init(){
         element**a;
@@ -211,6 +234,29 @@ class matrix{
             printf("\n");
         }
     }
+    void tout(){
+        printf("\n");
+        for(int i=0;i<n;++i){
+            for(int j=0;j<m;++j){
+                cur->a[i][j].out_element();
+                printf(" ");
+            }
+            printf("\n");
+        }
+    }
+    void save(char filename[]){
+        FILE *fr = fopen(filename, "w");
+        fprintf(fr,"%d %d\n",n,m);
+        for(int i=0;i<n;++i){
+            for(int j=0;j<m;++j){
+                cur->a[i][j].fout_element(fr);
+                fprintf(fr," ");
+            }
+            fprintf(fr,"\n");
+        }
+        fprintf(fr,"%d",kr);
+        fclose(fr);
+    }
     bool chek_matrix(){
         if(kr==-1){
             return true;
@@ -229,6 +275,9 @@ class matrix{
     }
     element& mul(){
         return multiplicator;
+    }
+    element& elem(int i, int j){
+        return cur->a[i][j];
     }
     int get_n(){
         return n;
@@ -252,11 +301,17 @@ class matrix{
     }
     void undo(){
         if(cur->prev!=NULL){
+            n=cur->prev->get_n();
+            m=cur->prev->get_m();
+            //cout<<n<<" "<<m<<endl;
             cur=cur->prev;
         }
     }
     void revert(){
         if(cur->next!=NULL){
+            n=cur->next->get_n();
+            m=cur->next->get_m();
+            //cout<<n<<" "<<m<<endl;
             cur=cur->next;
         }
     }
@@ -274,6 +329,200 @@ class matrix{
                 if(t1!=i){
                     multiplicator=cur->a[t1][t];
                     min(t1,i);
+                }
+            }
+        }
+    }
+
+    int det(){
+        if(n==1 && m==1){
+            return cur->a[0][0].get_n()/cur->a[0][0].get_d();
+        }else return det(cur->a, n, m);
+    }
+    int det(element** t, int t_n, int t_m){
+        if(t_n==2 && t_m==2){
+            element y_1;
+            y_1.set(t[0][0].get_n()*t[1][1].get_n(),t[0][0].get_d()*t[1][1].get_d());
+
+            element y_2;
+            y_2.set(t[0][1].get_n()*t[1][0].get_n(),t[0][1].get_d()*t[1][0].get_d());
+
+            y_1.set(
+                y_1.get_n()*y_2.get_d() - y_2.get_n()*y_1.get_d()
+                ,y_1.get_d()*y_2.get_d());
+
+            return y_1.get_n()/y_2.get_d();
+        }else if(t_n>2 && t_m>2){
+            int t_i, t_j;
+            int nul_i=evaluate_row(t, t_n, t_m, t_i);
+            int nul_j=evaluate_col(t, t_n, t_m, t_j);
+            int s=0;
+            if(nul_i>=nul_j){
+                for(int k=0;k<t_m;++k){
+                    if(t[t_i][k].get_n()!=0){
+                        element** t_det = new element *[t_n-1];
+                        for(int i=0;i<t_n-1;++i){
+                            t_det[i] = new element[t_m-1];
+                        }
+                        int v=0;
+                        for(int j=0;j<t_m;++j){
+                            if(j!=k){
+                                int u=0;
+                                for(int i=0;i<t_n;++i){
+                                    if(i!=t_i){
+                                        t_det[u][v]=t[i][j];
+                                        ++u;
+                                    }
+                                }
+                                ++v;
+                            }
+                        }
+
+                        s+=det(t_det, t_n-1, t_m-1) * pow(-1,t_i+k+2) * t[t_i][k].get_n() / t[t_i][k].get_d();
+
+                        for(int i=0;i<t_n-1;++i){
+                            delete[] t_det[i];
+                        }
+                        delete[] t_det;
+                    }
+                }
+            }else{
+                for(int k=0;k<t_n;++k){
+                    if(t[k][t_j].get_n()!=0){
+                        element** t_det = new element *[t_n-1];
+                        int u=0;
+                        for(int i=0;i<t_n;++i){
+                            if(i!=k){
+                                t_det[u] = new element[t_m-1];
+                                int v=0;
+                                for(int j=0;j<t_m;++j){
+                                    if(j!=t_j){
+                                        t_det[u][v]=t[i][j];
+                                        ++v;
+                                    }
+                                }
+                                ++u;
+                            }
+                        }
+                        
+                        s+=det(t_det, t_n-1, t_m-1) * pow(-1,t_j+k+2) * t[k][t_j].get_n() / t[k][t_j].get_d();
+
+                        for(int i=0;i<t_n-1;++i){
+                            delete[] t_det[i];
+                        }
+                        delete[] t_det;
+                    }
+                }
+            }
+
+            return s;
+        }else return -1;
+    }
+
+    int evaluate_row(element** t, int t_n, int t_m, int& t_i){
+        int max=-1;
+        t_i=0;
+        for(int i=0;i<t_n;++i){
+            int kol=0;
+            for(int j=0;j<t_m;++j){
+                kol+=t[i][j].get_n()==0;
+            }
+            if(kol>max){
+                max=kol;
+                t_i=i;
+            }
+        }
+        return max;
+    }
+
+    int evaluate_col(element** t, int t_n, int t_m, int& t_j){
+        int max=-1;
+        t_j=0;
+        for(int j=0;j<t_m;++j){
+            int kol=0;
+            for(int i=0;i<t_n;++i){
+                kol+=t[i][j].get_n()==0;
+            }
+            if(kol>max){
+                max=kol;
+                t_j=j;
+            }
+        }
+        return max;
+    }
+
+    void T(){
+        element** t = new element*[m];
+        for(int i=0;i<m;++i){
+            t[i] = new element[n];
+        }
+        for(int j=0;j<m;++j){
+            for(int i=0;i<n;++i){
+                t[j][i] = cur->a[i][j];
+            }
+        }
+        
+        for(int i=0;i<n;++i){
+            delete[] cur->a[i];
+        }
+        delete[] cur->a;
+
+        int h=n;
+        n=m;
+        m=h;
+
+        cur->get_n()=n;
+        cur->get_m()=m;
+
+        cur->a=t;
+    }
+
+    void matrix_mult(matrix* t){
+        element** r = new element*[n];
+        for(int i=0;i<n;++i){
+            r[i] = new element[t->get_m()];
+        }
+        
+        for(int i=0;i<n;++i){
+            for(int j=0;j<t->get_m();++j){
+                element res;
+                res.set(0,1);
+                for(int k=0;k<m;++k){
+                    if(kr==-1){
+                        int num = cur->a[i][k].get_n() * t->cur->a[k][j].get_n();
+                        int den = cur->a[i][k].get_d() * t->cur->a[k][j].get_d();
+                        num = num * res.get_d() + res.get_n() * den;
+                        den = den * res.get_d();
+                        res.set(num,den);
+                    }else{
+                        int num = cur->a[i][k].get_n() * t->cur->a[k][j].get_n();
+                        num%=kr;
+                        res.set(num,1);
+                    }
+                }
+                r[i][j]=res;
+            }
+        }
+        for(int i=0;i<n;++i){
+            delete[] cur->a[i];
+        }
+        delete[] cur->a;
+        cur->a=r;
+        m=t->get_m();
+        cur->get_m()=m;
+    }
+
+    void matrix_add(matrix* t){
+        for(int i=0;i<n;++i){
+            for(int j=0;j<m;++j){
+                if(kr==-1){
+                    int num = cur->a[i][j].get_n() * t->cur->a[i][j].get_d() + t->cur->a[i][j].get_n() * cur->a[i][j].get_d();
+                    int den = cur->a[i][j].get_d() * t->cur->a[i][j].get_d();
+                    cur->a[i][j].set(num,den);
+                }else{
+                    int num = cur->a[i][j].get_n() + t->cur->a[i][j].get_n();
+                    num%=kr;
+                    cur->a[i][j].set(num,cur->a[i][j].get_d());
                 }
             }
         }
@@ -385,16 +634,16 @@ class matrix{
     }
 };
 
-matrix* ma;
+//matrix* ma;
 
-void matrix_input(){
+void matrix_input(matrix*& ma){
     char command[101];
     printf("Choose input f/h: ");
     scanf("%s",command);
     if(strcmp(command, "h") == 0){
         printf("Please enter matrix size (n x m): ");
         int n,m;
-        scanf("%d %s %d", &m, command, &n);
+        scanf("%d %s %d", &n, command, &m);
         ma = new matrix(n,m);
         ma->init();
         
@@ -419,7 +668,7 @@ void matrix_input(){
 
         if(fr!=NULL){
             int n,m;
-            int t = fscanf(fr,"%d %d", &m, &n);
+            int t = fscanf(fr,"%d %d", &n, &m);
             f=(t==2 && m>=0 && n>=0);
             if(f){
                 ma = new matrix(n,m);
@@ -448,29 +697,114 @@ void matrix_input(){
                 }
             }else{
                 printf("File corrupted: %s\n\n", command);
-                matrix_input();
+                matrix_input(ma);
             }
         }else{
             printf("File does not exist\n\n");
-            matrix_input();
+            matrix_input(ma);
         }
     }else{
         printf("Input unidentified\n\n");
-        matrix_input();
+        matrix_input(ma);
     }
 }
 
-void calculation(){
+void calculation(matrix*& ma){
     bool f=true;
     while(f){
         char command[101];
         printf("> ");
         scanf("%s", command);
+        
         if (strcmp(command, "new") == 0) {
             delete ma;
             printf("\n");
-            matrix_input();
+            matrix_input(ma);
             ma->out();
+            printf("\n");
+        } else if (strcmp(command, "help") == 0){
+            FILE* fr = fopen("guide.txt","r");
+            if(fr=nullptr){
+                char buffer[256];
+                while (fgets(buffer, sizeof(buffer), fr)) {
+                    cout << buffer;
+                }
+                cout<<endl<<endl<<endl;
+                fclose(fr);
+            }else cout<<"Unavailable\n\n";
+        } else if (strcmp(command, "size") == 0){
+            printf("n: %d  m: %d\nsaved:\nn: %d  m: %d\n\n",ma->get_n(),ma->get_m(),ma->curent()->get_n(),ma->curent()->get_m());
+        } else if (strcmp(command, "matrix") == 0){
+            ma->out();
+            printf("\n");
+        } else if (strcmp(command, "save") == 0){
+            printf("Please enter filename: ");
+            char filename[101];
+            scanf("%s",filename);
+            if(string(filename).compare(strlen(filename)-4,4,".txt")==0){
+                ma->save(filename);
+                printf("Saved\n\n");
+            }else cout<<"Unavailable filename\n\n";
+        } else if (strcmp(command, "rtm") == 0){
+            ma->copy();
+            ma->rtm();
+            ma->out();
+            printf("\n");
+        } else if (strcmp(command, "det") == 0){
+            if(ma->get_n()==ma->get_m()){
+                printf("Determinant: %d\n\n", ma->det());
+            }else printf("Possible only with square matrix\n\n");
+        } else if (strcmp(command, "T") == 0){
+            ma->copy();
+            ma->T();
+            ma->out();
+            printf("\n");
+        } else if (strcmp(command, "*matrix") == 0){
+            matrix* t;
+            char c='n';
+            while(c!='y'){
+                matrix_input(t);
+                t->tout();
+                printf("\nConfirm matrix B (y/n): ");
+                cin>>c;
+                if(c=='n'){
+                    delete t;
+                }
+                printf("\n");
+            }
+            if(ma->get_m()==t->get_n()){
+                if(ma->krat()==t->krat()){
+                    ma->copy();
+                    cout<<"Result";
+                    ma->matrix_mult(t);
+                    ma->tout();
+                }else cout<<"Incomparable krat\n";
+            }else cout<<"Incomparable size\n";
+            printf("\n");
+            delete t;
+        } else if (strcmp(command, "+matrix") == 0){
+            matrix* t;
+            char c='n';
+            while(c=='n'){
+                matrix_input(t);
+                t->tout();
+                printf("\nConfirm matrix B (y/n): ");
+                cin>>c;
+                if(c=='n'){
+                    delete t;
+                }
+                printf("\n");
+            }
+            if(ma->get_n()==t->get_n()&&ma->get_m()==t->get_m()){
+                if(ma->krat()==t->krat()){
+                    ma->copy();
+                    cout<<"Result";
+                    ma->matrix_add(t);
+                    ma->tout();
+                }else cout<<"Incomparable krat\n";
+            }else cout<<"Incomparable size\n";
+            printf("\n");
+            delete t;
         } else if (strcmp(command, "*") == 0) {
             char t[8];
             int y;
@@ -490,6 +824,26 @@ void calculation(){
                 }
                 ma->out();
                 printf("\n");
+            }
+        } else if (strcmp(command, "/") == 0) {
+            char t[8];
+            int y;
+            scanf("%s %d",t,&y);
+            element m(t);
+            if(m.get_n()==0){
+                printf("Cannot devide by 0\n\n");
+            }else if(y>=1&&y<=(ma->get_n())){
+                ma->copy();
+                ma->dev(m, y-1);
+                if(m.get_d()==1){
+                    printf("R%d <- 1/%d * R%d", y, m.get_n(), y);
+                }else{
+                    printf("R%d <- %d/%d * R%d", y, m.get_d(), m.get_n(), y);
+                }
+                ma->out();
+                printf("\n");
+            }else{
+                printf("Invalid line number\n");
             }
         } else if (strcmp(command, "+") == 0) {
             int x,y;
@@ -520,64 +874,95 @@ void calculation(){
                     printf("\n");
                 }
             }
-        } else if (strcmp(command, "/") == 0) {
-            char t[8];
-            int y;
-            scanf("%s %d",t,&y);
-            element m(t);
-            if(y>=1&&y<=(ma->get_n())){
-                ma->copy();
-                ma->dev(m, y-1);
-                if(m.get_d()==1){
-                    printf("R%d <- 1/%d * R%d", y, m.get_n(), y);
-                }else{
-                    printf("R%d <- %d/%d * R%d", y, m.get_d(), m.get_n(), y);
-                }
-                ma->out();
-                printf("\n");
-            }else{
-                printf("Invalid line number\n");
-            }
         } else if (strcmp(command, "-") == 0) {
             int x,y;
             char t[8];
             scanf("%d %d", &x, &y);
-            printf("Choose multiplicator: ");
-            scanf("%s", t);
-            element m(t);
-            ma->copy();
-            ma->mul()=m;
-            ma->min(x-1, y-1);
-            if(m.get_n()==1&&m.get_d()==1){
-                printf("R%d <- R%d + R%d", x, x, y);
-            }else{        
-                if(m.get_d()==1){
-                    printf("R%d <- R%d - %d * R%d", x, x, m.get_n(), y);
+            if((x<1||x>(ma->get_n()))||(y<1||y>(ma->get_n()))){
+                printf("Invalid line number\n\n");
+            }else{
+                printf("Choose multiplicator: ");
+                scanf("%s", t);
+                element m(t);
+                if(m.get_n()<=0){
+                    printf("Multiplicator must be strictly positive\n\n");
                 }else{
-                    printf("R%d <- R%d - %d/%d * R%d", x, x, m.get_n(), m.get_d(), y);
+                    ma->copy();
+                    ma->mul()=m;
+                    ma->min(x-1, y-1);
+                    if(m.get_n()==1&&m.get_d()==1){
+                        printf("R%d <- R%d + R%d", x, x, y);
+                    }else{        
+                        if(m.get_d()==1){
+                            printf("R%d <- R%d - %d * R%d", x, x, m.get_n(), y);
+                        }else{
+                            printf("R%d <- R%d - %d/%d * R%d", x, x, m.get_n(), m.get_d(), y);
+                        }
+                    }
+                    ma->out();
+                    printf("\n");
                 }
             }
-            ma->out();
-            printf("\n");
         } else if (strcmp(command, "swap") == 0) {
             int x,y;
             scanf("%d %d", &x, &y);
-            ma->copy();
-            ma->swap(x-1,y-1);
-            printf("R%d <-> R%d",x ,y);
-            ma->out();
-            printf("\n");
+            if((x<1||x>(ma->get_n()))||(y<1||y>(ma->get_n()))){
+                printf("Invalid line number\n\n");
+            }else{
+                ma->copy();
+                ma->swap(x-1,y-1);
+                printf("R%d <-> R%d",x ,y);
+                ma->out();
+                printf("\n");
+            }
         } else if (strcmp(command, "krat") == 0) {
             printf("Krat: %d\n\n", ma->krat());
-        } else if (strcmp(command, "revert") == 0) {
-            ma->revert();
-            ma->out();
-            printf("\n");
         } else if (strcmp(command, "undo") == 0) {
             ma->undo();
             ma->out();
             printf("\n");
-        }  else if (strcmp(command, "n*") == 0) {
+        } else if (strcmp(command, "revert") == 0) {
+            ma->revert();
+            ma->out();
+            printf("\n");
+        } else if (strcmp(command, "change") == 0) {
+            ma->copy();
+            printf("Enter line number: ");
+            int x;
+            scanf("%d",&x);
+            if(x<1||x>(ma->get_n())){
+                printf("Invalid line number\n\n");
+            }else{
+                printf("Enter line: ");
+                element *t = new element[ma->get_m()];
+                for(int i=0;i<ma->get_m();++i){
+                    char st[8];
+                    scanf("%s",st);
+                    t[i].set(st);
+                }
+                ma->change_line(x-1, t);
+                ma->out();
+                printf("\n");
+            }
+        } else if (strcmp(command, "chelem") == 0) {
+            ma->copy();
+            int i,j;
+            printf("Enter line number: ");
+            scanf("%d",&i);
+            printf("Enter row number: ");
+            scanf("%d",&j);
+            if((i<1||i>(ma->get_n()))||(j<1||j>(ma->get_m()))){
+                printf("Invalid coordinates\n\n");
+            }else{
+                printf("Enter element: ");
+                char st[8];
+                scanf("%s",st);
+                element t(st);
+                ma->elem(i-1, j-1)=t;
+                ma->out();
+                printf("\n");
+            }
+        } else if (strcmp(command, "n*") == 0) {
             int x;
             scanf("%d",&x);
             printf("For %d invert(*): %d\n\n",x ,ma->nm(x));
@@ -585,62 +970,36 @@ void calculation(){
             int x;
             scanf("%d",&x);
             printf("For %d invert(+): %d\n\n",x ,ma->na(x));
-        }  else if (strcmp(command, "setk") == 0) {
+        } else if (strcmp(command, "setk") == 0) {
             int x;
             scanf("%d",&x);
-            ma->krat()=x;
-            printf("Krat set to: %d\n\n",x);
-            if(!ma->chek_matrix()){
-                printf("Matrix and krat contradiction\n");
-                ma->out();
-                printf("\n");
+            if(x<-1||x==0){
+                printf("Invalid krat option\n\n");
+            }else{
+                ma->krat()=x;
+                printf("Krat set to: %d\n\n",x);
+                if(!ma->chek_matrix()){
+                    printf("Matrix and krat contradiction\n");
+                    ma->out();
+                    printf("\n");
+                }
             }
-        }else if (strcmp(command, "end") == 0) {
+        } else if (strcmp(command, "end") == 0) {
             f=false;
-        } else if (strcmp(command, "change") == 0) {
-            ma->copy();
-            printf("Enter line number: ");
-            int x;
-            scanf("%d",&x);
-            printf("Enter line: ");
-            element *t = new element[ma->get_m()];
-            for(int i=0;i<ma->get_m();++i){
-                char st[8];
-                scanf("%s",st);
-                t[i].set(st);
-            }
-            ma->change_line(x-1, t);
-            ma->out();
-            printf("\n");
-        } else if (strcmp(command, "help") == 0){
-            FILE* fr = fopen("guide.txt","r");
-            char buffer[256];
-            while (fgets(buffer, sizeof(buffer), fr)) {
-                cout << buffer;
-            }
-            cout<<endl<<endl<<endl;
-            fclose(fr);
-        } else if (strcmp(command, "matrix") == 0){
-            ma->out();
-            printf("\n");
-        } else if (strcmp(command, "rtm") == 0){
-            ma->copy();
-            ma->rtm();
-            ma->out();
-            printf("\n");
         } else {
-            printf("bad input\n");
+            printf("bad input\n\n");
         }
     }
 }
 
 int main(){
-    matrix_input();
+    matrix* ma;
+    matrix_input(ma);
 
     ma->out();
     printf("\n");
     
-    calculation();
+    calculation(ma);
 
     delete ma;
 }
